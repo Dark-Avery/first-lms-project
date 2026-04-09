@@ -84,6 +84,12 @@ USE_I18N = True
 USE_TZ = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+PROVIDER_TIMEOUT_SECONDS = int(os.getenv("PROVIDER_TIMEOUT_SECONDS", "10"))
+EVENTS_PROVIDER_BASE_URL = os.getenv(
+    "EVENTS_PROVIDER_BASE_URL",
+    "http://events-provider.dev-2.python-labs.ru",
+)
+EVENTS_PROVIDER_API_KEY = os.getenv("EVENTS_PROVIDER_API_KEY", "")
 
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": None,
