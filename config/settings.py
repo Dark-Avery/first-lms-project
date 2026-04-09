@@ -18,6 +18,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "rest_framework",
     "health",
+    "events",
+    "tickets",
+    "sync",
 ]
 
 MIDDLEWARE = [
