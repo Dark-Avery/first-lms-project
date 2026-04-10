@@ -7,7 +7,10 @@ from django.utils import timezone
 from events.exceptions import EventNotFound, EventUnpublished, SeatPatternError
 from events.seat_patterns import seat_exists
 from events.selectors import get_event_by_id
-from events.services import get_available_seats, invalidate_event_seats_cache
+from events.services import (
+    get_available_seats_for_event,
+    invalidate_event_seats_cache,
+)
 from integrations.events_provider.client import EventsProviderClient
 from integrations.events_provider.exceptions import ProviderBusinessError
 from tickets.exceptions import RegistrationClosed, TicketSeatInvalid, TicketSeatUnavailable
@@ -42,7 +45,7 @@ class CreateTicketUseCase:
         except SeatPatternError as error:
             raise TicketSeatInvalid from error
 
-        available_seats = get_available_seats(event.id, client=self.client)
+        available_seats = get_available_seats_for_event(event, client=self.client)
         if seat not in available_seats:
             raise TicketSeatUnavailable
 

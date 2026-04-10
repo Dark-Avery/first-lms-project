@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.cache import cache
 
 from events.exceptions import EventNotFound, EventUnpublished
+from events.models import Event
 from events.selectors import get_event_by_id
 from integrations.events_provider.client import EventsProviderClient
 
@@ -16,6 +17,22 @@ def build_event_seats_cache_key(event_id: UUID) -> str:
 
 def invalidate_event_seats_cache(event_id: UUID) -> None:
     cache.delete(build_event_seats_cache_key(event_id))
+
+
+def get_available_seats_for_event(
+    event: Event,
+    *,
+    client: EventsProviderClient | None = None,
+) -> list[str]:
+    cache_key = build_event_seats_cache_key(event.id)
+    cached_seats = cache.get(cache_key)
+    if cached_seats is not None:
+        return cached_seats
+
+    seats_client = client or EventsProviderClient()
+    available_seats = seats_client.seats(str(event.id))
+    cache.set(cache_key, available_seats, timeout=settings.SEATS_CACHE_TIMEOUT_SECONDS)
+    return available_seats
 
 
 def get_available_seats(
@@ -29,12 +46,4 @@ def get_available_seats(
     if event.status != "published":
         raise EventUnpublished
 
-    cache_key = build_event_seats_cache_key(event_id)
-    cached_seats = cache.get(cache_key)
-    if cached_seats is not None:
-        return cached_seats
-
-    seats_client = client or EventsProviderClient()
-    available_seats = seats_client.seats(str(event.id))
-    cache.set(cache_key, available_seats, timeout=settings.SEATS_CACHE_TIMEOUT_SECONDS)
-    return available_seats
+    return get_available_seats_for_event(event, client=client)
