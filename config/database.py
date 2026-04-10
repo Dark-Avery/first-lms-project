@@ -13,23 +13,12 @@ def build_default_database_settings(
 ) -> dict[str, str]:
     source = env or os.environ
 
-    if _has_db_env(source):
-        return {
-            "ENGINE": source.get("DB_ENGINE", "django.db.backends.sqlite3"),
-            "NAME": source.get("DB_NAME", str(base_dir / "db.sqlite3")),
-            "USER": source.get("DB_USER", ""),
-            "PASSWORD": source.get("DB_PASSWORD", ""),
-            "HOST": source.get("DB_HOST", ""),
-            "PORT": source.get("DB_PORT", ""),
-        }
-
     if source.get("POSTGRES_CONNECTION_STRING"):
-        return _build_from_postgres_connection_string(
+        config = _build_from_postgres_connection_string(
             source["POSTGRES_CONNECTION_STRING"],
         )
-
-    if _has_postgres_env(source):
-        return {
+    elif _has_postgres_env(source):
+        config = {
             "ENGINE": "django.db.backends.postgresql",
             "NAME": source.get("POSTGRES_DATABASE_NAME", source.get("POSTGRES_DB", "")),
             "USER": source.get("POSTGRES_USERNAME", source.get("POSTGRES_USER", "")),
@@ -37,15 +26,33 @@ def build_default_database_settings(
             "HOST": source.get("POSTGRES_HOST", ""),
             "PORT": source.get("POSTGRES_PORT", ""),
         }
+    else:
+        config = {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": str(base_dir / "db.sqlite3"),
+            "USER": "",
+            "PASSWORD": "",
+            "HOST": "",
+            "PORT": "",
+        }
 
-    return {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": str(base_dir / "db.sqlite3"),
-        "USER": "",
-        "PASSWORD": "",
-        "HOST": "",
-        "PORT": "",
-    }
+    if _has_db_env(source):
+        config.update(
+            {
+                field: value
+                for field, value in (
+                    ("ENGINE", source.get("DB_ENGINE")),
+                    ("NAME", source.get("DB_NAME")),
+                    ("USER", source.get("DB_USER")),
+                    ("PASSWORD", source.get("DB_PASSWORD")),
+                    ("HOST", source.get("DB_HOST")),
+                    ("PORT", source.get("DB_PORT")),
+                )
+                if value
+            }
+        )
+
+    return config
 
 
 def build_default_celery_broker_url(env: Mapping[str, str] | None = None) -> str:
