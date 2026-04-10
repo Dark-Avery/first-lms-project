@@ -192,6 +192,29 @@ def test_ticket_create_rejects_invalid_seat_pattern_without_provider_calls():
 
 
 @pytest.mark.django_db
+def test_ticket_create_rejects_malformed_local_seat_pattern_without_provider_calls():
+    client = APIClient()
+    place = create_place(
+        place_id="00000000-0000-0000-0000-000000000135",
+        seats_pattern="A10-1",
+    )
+    event = create_event(event_id="00000000-0000-0000-0000-000000000136", place=place)
+
+    with patch("tickets.views.EventsProviderClient") as provider_cls:
+        response = client.post(
+            "/api/tickets",
+            build_payload(str(event.id), seat="A10"),
+            format="json",
+        )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Seat is invalid."}
+    assert Ticket.objects.count() == 0
+    provider_cls.return_value.seats.assert_not_called()
+    provider_cls.return_value.register.assert_not_called()
+
+
+@pytest.mark.django_db
 def test_ticket_create_rejects_past_event_without_provider_calls():
     client = APIClient()
     place = create_place(place_id="00000000-0000-0000-0000-000000000133")
@@ -235,6 +258,25 @@ def test_ticket_create_rejects_unavailable_seat_without_register_call():
     assert response.json() == {"detail": "Seat is unavailable."}
     provider_client.register.assert_not_called()
     assert Ticket.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_ticket_create_maps_provider_seats_failure_to_502_without_local_ticket():
+    cache.clear()
+    client = APIClient()
+    place = create_place(place_id="00000000-0000-0000-0000-000000000143")
+    event = create_event(event_id="00000000-0000-0000-0000-000000000144", place=place)
+    provider_client = Mock()
+    provider_client.seats.side_effect = ProviderBadResponseError("html")
+
+    with patch("tickets.views.EventsProviderClient", return_value=provider_client):
+        response = client.post("/api/tickets", build_payload(str(event.id)), format="json")
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Registration unavailable."}
+    assert Ticket.objects.count() == 0
+    provider_client.register.assert_not_called()
+    assert cache.get(build_event_seats_cache_key(event.id)) is None
 
 
 @pytest.mark.django_db

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import time
 from datetime import timedelta
 from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
 from django.core.cache import cache
+from django.test import override_settings
 from django.utils import timezone
 
 from events.models import Event, Place
@@ -51,3 +53,20 @@ def test_get_available_seats_for_event_uses_cache_before_provider_call():
 
     assert seats == ["A10", "A11"]
     client.seats.assert_not_called()
+
+
+@pytest.mark.django_db
+@override_settings(SEATS_CACHE_TIMEOUT_SECONDS=1)
+def test_get_available_seats_for_event_refreshes_cache_after_timeout():
+    cache.clear()
+    event = create_event()
+    client = Mock()
+    client.seats.side_effect = [["A10"], ["A11"]]
+
+    first_seats = get_available_seats_for_event(event, client=client)
+    time.sleep(1.1)
+    second_seats = get_available_seats_for_event(event, client=client)
+
+    assert first_seats == ["A10"]
+    assert second_seats == ["A11"]
+    assert client.seats.call_count == 2
