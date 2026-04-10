@@ -49,3 +49,8 @@ class EventDetailSerializer(serializers.ModelSerializer):
             "status",
             "number_of_visitors",
         )
+
+
+class EventSeatsSerializer(serializers.Serializer):
+    event_id = serializers.UUIDField()
+    available_seats = serializers.ListField(child=serializers.CharField())

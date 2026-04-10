@@ -91,6 +91,14 @@ EVENTS_PROVIDER_BASE_URL = os.getenv(
     "http://events-provider.dev-2.python-labs.ru",
 )
 EVENTS_PROVIDER_API_KEY = os.getenv("EVENTS_PROVIDER_API_KEY", "")
+SEATS_CACHE_TIMEOUT_SECONDS = int(os.getenv("SEATS_CACHE_TIMEOUT_SECONDS", "30"))
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "events-aggregator-cache",
+    }
+}
 
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": None,
