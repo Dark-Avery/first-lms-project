@@ -6,9 +6,20 @@ from rest_framework.views import APIView
 from events.exceptions import EventNotFound, EventUnpublished
 from integrations.events_provider.client import EventsProviderClient
 from integrations.events_provider.exceptions import EventsProviderError
-from tickets.exceptions import RegistrationClosed, TicketSeatInvalid, TicketSeatUnavailable
-from tickets.serializers import TicketCreateRequestSerializer, TicketCreateResponseSerializer
-from tickets.usecases import CreateTicketUseCase
+from tickets.exceptions import (
+    RegistrationClosed,
+    TicketAlreadyCancelled,
+    TicketCancellationClosed,
+    TicketNotFound,
+    TicketSeatInvalid,
+    TicketSeatUnavailable,
+)
+from tickets.serializers import (
+    TicketCancelResponseSerializer,
+    TicketCreateRequestSerializer,
+    TicketCreateResponseSerializer,
+)
+from tickets.usecases import CancelTicketUseCase, CreateTicketUseCase
 
 
 class TicketCreateAPIView(APIView):
@@ -53,3 +64,32 @@ class TicketCreateAPIView(APIView):
 
     def _build_use_case(self) -> CreateTicketUseCase:
         return CreateTicketUseCase(EventsProviderClient())
+
+
+class TicketCancelAPIView(APIView):
+    def delete(self, request, ticket_id):
+        try:
+            self._build_use_case().execute(ticket_id=ticket_id)
+        except TicketNotFound:
+            raise NotFound(detail="Not found.")
+        except TicketAlreadyCancelled:
+            return Response(
+                {"detail": "Ticket is already cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except TicketCancellationClosed:
+            return Response(
+                {"detail": "Ticket cancellation is closed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except EventsProviderError:
+            return Response(
+                {"detail": "Cancellation unavailable."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        response_serializer = TicketCancelResponseSerializer({"success": True})
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+    def _build_use_case(self) -> CancelTicketUseCase:
+        return CancelTicketUseCase(EventsProviderClient())

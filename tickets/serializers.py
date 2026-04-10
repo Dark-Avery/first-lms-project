@@ -11,3 +11,7 @@ class TicketCreateRequestSerializer(serializers.Serializer):
 
 class TicketCreateResponseSerializer(serializers.Serializer):
     ticket_id = serializers.UUIDField()
+
+
+class TicketCancelResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField()

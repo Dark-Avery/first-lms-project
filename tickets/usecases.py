@@ -13,8 +13,19 @@ from events.services import (
 )
 from integrations.events_provider.client import EventsProviderClient
 from integrations.events_provider.exceptions import ProviderBusinessError
-from tickets.exceptions import RegistrationClosed, TicketSeatInvalid, TicketSeatUnavailable
+from tickets.exceptions import (
+    RegistrationClosed,
+    TicketAlreadyCancelled,
+    TicketCancellationClosed,
+    TicketNotFound,
+    TicketSeatInvalid,
+    TicketSeatUnavailable,
+)
 from tickets.models import Ticket
+from tickets.selectors import (
+    get_active_ticket_by_provider_ticket_id,
+    has_cancelled_ticket_with_provider_ticket_id,
+)
 
 
 class CreateTicketUseCase:
@@ -70,3 +81,25 @@ class CreateTicketUseCase:
         )
         invalidate_event_seats_cache(event.id)
         return ticket_id
+
+
+class CancelTicketUseCase:
+    def __init__(self, client: EventsProviderClient) -> None:
+        self.client = client
+
+    def execute(self, *, ticket_id: UUID) -> None:
+        ticket = get_active_ticket_by_provider_ticket_id(ticket_id=ticket_id)
+        if ticket is None:
+            if has_cancelled_ticket_with_provider_ticket_id(ticket_id=ticket_id):
+                raise TicketAlreadyCancelled
+            raise TicketNotFound
+
+        if timezone.now() >= ticket.event.event_time:
+            raise TicketCancellationClosed
+
+        self.client.unregister(str(ticket.event.id), ticket_id=str(ticket.ticket_id))
+
+        ticket.status = Ticket.Status.CANCELLED
+        ticket.cancelled_at = timezone.now()
+        ticket.save(update_fields=["status", "cancelled_at"])
+        invalidate_event_seats_cache(ticket.event.id)
