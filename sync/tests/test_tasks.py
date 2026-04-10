@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from integrations.events_provider.exceptions import ProviderBadResponseError
+from sync.exceptions import SyncAlreadyRunning
 from sync.tasks import run_sync_events
 
 
@@ -33,3 +34,18 @@ def test_run_sync_events_task_propagates_service_errors():
 
             with pytest.raises(ProviderBadResponseError):
                 run_sync_events()
+
+
+def test_run_sync_events_task_returns_skipped_when_sync_is_already_running():
+    with patch("sync.tasks.EventsProviderClient"):
+        with patch("sync.tasks.SyncEventsService") as service_cls:
+            service_cls.return_value.run.side_effect = SyncAlreadyRunning(
+                "Sync is already running."
+            )
+
+            result = run_sync_events()
+
+    assert result == {
+        "sync_run_id": "",
+        "sync_status": "skipped",
+    }

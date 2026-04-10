@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from events.models import Event, Place
+from sync.exceptions import SyncAlreadyRunning
 from sync.models import SyncRun, SyncState
 from sync.services import SyncEventsService
 
@@ -228,3 +229,17 @@ def test_sync_is_successful_when_provider_returns_no_events():
     assert state.last_changed_at is None
     assert Event.objects.count() == 0
     assert Place.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_sync_rejects_overlapping_run_without_creating_new_sync_run():
+    SyncState.objects.create(sync_status=SyncState.Status.RUNNING)
+    client = Mock()
+    paginator_cls = Mock(return_value=iter([]))
+    service = SyncEventsService(client, paginator_cls=paginator_cls)
+
+    with pytest.raises(SyncAlreadyRunning, match="Sync is already running."):
+        service.run()
+
+    assert SyncRun.objects.count() == 0
+    paginator_cls.assert_not_called()

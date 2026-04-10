@@ -2,12 +2,22 @@ import os
 from pathlib import Path
 
 from celery.schedules import crontab
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_SYNC_START_DATE = "2000-01-01"
+DEFAULT_DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.sqlite3")
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 DEBUG = os.getenv("DEBUG", "False") == "True"
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    if DEFAULT_DB_ENGINE == "django.db.backends.sqlite3":
+        SECRET_KEY = "dev-secret-key"
+    else:
+        raise ImproperlyConfigured(
+            "SECRET_KEY must be set when using a non-sqlite database."
+        )
+
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv("ALLOWED_HOSTS", "*").split(",")
@@ -57,7 +67,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
+        "ENGINE": DEFAULT_DB_ENGINE,
         "NAME": os.getenv("DB_NAME", str(BASE_DIR / "db.sqlite3")),
         "USER": os.getenv("DB_USER", ""),
         "PASSWORD": os.getenv("DB_PASSWORD", ""),

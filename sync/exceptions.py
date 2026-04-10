@@ -1,0 +1,2 @@
+class SyncAlreadyRunning(Exception):
+    pass

@@ -4,12 +4,14 @@ import logging
 from typing import Any
 
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from events.models import Event, Place
 from integrations.events_provider.client import EventsProviderClient
 from integrations.events_provider.paginator import EventsPaginator
+from sync.exceptions import SyncAlreadyRunning
 from sync.models import SyncRun, SyncState
 
 logger = logging.getLogger(__name__)
@@ -28,27 +30,31 @@ class SyncEventsService:
         self.sync_start_date = sync_start_date or settings.DEFAULT_SYNC_START_DATE
 
     def run(self) -> SyncRun:
-        state = self._get_state()
-        started_at = timezone.now()
-        changed_at = self._build_changed_at(state)
-        sync_run = SyncRun.objects.create(
-            started_at=started_at,
-            sync_status=SyncRun.Status.RUNNING,
-        )
+        with transaction.atomic():
+            state = self._get_locked_state()
+            if state.sync_status == SyncState.Status.RUNNING:
+                raise SyncAlreadyRunning("Sync is already running.")
 
-        logger.info(
-            "Sync started.",
-            extra={
-                "sync_run_id": sync_run.id,
-                "changed_at": changed_at,
-            },
-        )
+            started_at = timezone.now()
+            changed_at = self._build_changed_at(state)
+            sync_run = SyncRun.objects.create(
+                started_at=started_at,
+                sync_status=SyncRun.Status.RUNNING,
+            )
 
-        state.sync_status = SyncState.Status.RUNNING
-        state.started_at = started_at
-        state.finished_at = None
-        state.last_error = ""
-        state.save()
+            logger.info(
+                "Sync started.",
+                extra={
+                    "sync_run_id": sync_run.id,
+                    "changed_at": changed_at,
+                },
+            )
+
+            state.sync_status = SyncState.Status.RUNNING
+            state.started_at = started_at
+            state.finished_at = None
+            state.last_error = ""
+            state.save()
 
         max_changed_at = state.last_changed_at
 
@@ -120,6 +126,10 @@ class SyncEventsService:
     def _get_state(self) -> SyncState:
         state, _ = SyncState.objects.get_or_create(pk=1)
         return state
+
+    def _get_locked_state(self) -> SyncState:
+        self._get_state()
+        return SyncState.objects.select_for_update().get(pk=1)
 
     def _build_changed_at(self, state: SyncState) -> str:
         if state.last_changed_at is None:

@@ -5,18 +5,9 @@ if [ -d "${PWD}/.venv/bin" ]; then
   export PATH="${PWD}/.venv/bin:${PATH}"
 fi
 
-if [ -z "${CELERY_BROKER_URL:-}" ]; then
-  echo "CELERY_BROKER_URL must be set" >&2
-  exit 1
-fi
+PIDS=()
 
 python manage.py migrate
-
-python -m celery -A config worker -l INFO &
-CELERY_WORKER_PID=$!
-
-python -m celery -A config beat -l INFO &
-CELERY_BEAT_PID=$!
 
 gunicorn config.wsgi:application \
   --bind 0.0.0.0:${PORT:-8000} \
@@ -25,17 +16,34 @@ gunicorn config.wsgi:application \
   --worker-tmp-dir="${GUNICORN_WORKER_TMP_DIR:-/tmp}" \
   --timeout=120 &
 GUNICORN_PID=$!
+PIDS+=("$GUNICORN_PID")
+
+if [ -n "${CELERY_BROKER_URL:-}" ]; then
+  python -m celery -A config worker -l INFO &
+  CELERY_WORKER_PID=$!
+  PIDS+=("$CELERY_WORKER_PID")
+
+  python -m celery -A config beat -l INFO &
+  CELERY_BEAT_PID=$!
+  PIDS+=("$CELERY_BEAT_PID")
+else
+  echo "CELERY_BROKER_URL is not set; starting web without worker and beat." >&2
+fi
 
 cleanup() {
-  kill "$CELERY_WORKER_PID" "$CELERY_BEAT_PID" "$GUNICORN_PID" 2>/dev/null || true
+  if [ "${#PIDS[@]}" -gt 0 ]; then
+    kill "${PIDS[@]}" 2>/dev/null || true
+  fi
 }
 
 trap cleanup EXIT SIGINT SIGTERM
 
-wait -n "$CELERY_WORKER_PID" "$CELERY_BEAT_PID" "$GUNICORN_PID"
+wait -n "${PIDS[@]}"
 EXIT_CODE=$?
 
-kill "$CELERY_WORKER_PID" "$CELERY_BEAT_PID" "$GUNICORN_PID" 2>/dev/null || true
-wait "$CELERY_WORKER_PID" "$CELERY_BEAT_PID" "$GUNICORN_PID" 2>/dev/null || true
+if [ "${#PIDS[@]}" -gt 0 ]; then
+  kill "${PIDS[@]}" 2>/dev/null || true
+  wait "${PIDS[@]}" 2>/dev/null || true
+fi
 
 exit "$EXIT_CODE"
