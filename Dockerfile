@@ -14,6 +14,10 @@ WORKDIR /app
 COPY pyproject.toml uv.lock manage.py run.sh ./
 COPY config ./config
 COPY health ./health
+COPY events ./events
+COPY tickets ./tickets
+COPY sync ./sync
+COPY integrations ./integrations
 
 RUN uv sync --frozen --no-dev
 RUN chown -R appuser:appuser /app

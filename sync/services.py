@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from django.conf import settings
@@ -10,6 +11,8 @@ from events.models import Event, Place
 from integrations.events_provider.client import EventsProviderClient
 from integrations.events_provider.paginator import EventsPaginator
 from sync.models import SyncRun, SyncState
+
+logger = logging.getLogger(__name__)
 
 
 class SyncEventsService:
@@ -31,6 +34,14 @@ class SyncEventsService:
         sync_run = SyncRun.objects.create(
             started_at=started_at,
             sync_status=SyncRun.Status.RUNNING,
+        )
+
+        logger.info(
+            "Sync started.",
+            extra={
+                "sync_run_id": sync_run.id,
+                "changed_at": changed_at,
+            },
         )
 
         state.sync_status = SyncState.Status.RUNNING
@@ -63,6 +74,13 @@ class SyncEventsService:
             state.finished_at = finished_at
             state.last_error = str(error)
             state.save(update_fields=["sync_status", "finished_at", "last_error"])
+            logger.exception(
+                "Sync failed.",
+                extra={
+                    "sync_run_id": sync_run.id,
+                    "changed_at": changed_at,
+                },
+            )
             raise
 
         finished_at = timezone.now()
@@ -87,6 +105,15 @@ class SyncEventsService:
                 "finished_at",
                 "last_error",
             ]
+        )
+
+        logger.info(
+            "Sync finished successfully.",
+            extra={
+                "sync_run_id": sync_run.id,
+                "changed_at": changed_at,
+                "last_changed_at": max_changed_at.isoformat() if max_changed_at else None,
+            },
         )
         return sync_run
 

@@ -10,3 +10,4 @@ staticfiles
 .idea
 .env
 .env.*
+celerybeat-schedule

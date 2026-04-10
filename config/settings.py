@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from celery.schedules import crontab
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_SYNC_START_DATE = "2000-01-01"
 
@@ -104,8 +106,15 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": None,
 }
 
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "memory://")
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "")
 CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "False") == "True"
 CELERY_TASK_EAGER_PROPAGATES = (
     os.getenv("CELERY_TASK_EAGER_PROPAGATES", "False") == "True"
 )
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    "daily-events-sync": {
+        "task": "sync.run_sync_events",
+        "schedule": crontab(hour=3, minute=0),
+    }
+}
