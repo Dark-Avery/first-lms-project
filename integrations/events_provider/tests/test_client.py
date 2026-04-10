@@ -85,7 +85,9 @@ def test_seats_returns_available_seats_list():
 
 def test_register_returns_provider_ticket_id():
     session = Mock()
-    session.request.return_value = make_response(json_data={"ticket_id": "ticket-1"})
+    session.request.return_value = make_response(
+        json_data={"ticket_id": "00000000-0000-0000-0000-000000000001"}
+    )
     client = EventsProviderClient(base_url="http://provider.example", session=session)
 
     assert (
@@ -96,7 +98,7 @@ def test_register_returns_provider_ticket_id():
             email="ivan@example.com",
             seat="A10",
         )
-        == "ticket-1"
+        == "00000000-0000-0000-0000-000000000001"
     )
 
     session.request.assert_called_once_with(
@@ -214,3 +216,18 @@ def test_client_maps_malformed_events_payload_to_bad_response():
 
     with pytest.raises(ProviderBadResponseError):
         client.events(changed_at="2026-01-05")
+
+
+def test_client_maps_invalid_ticket_id_payload_to_bad_response():
+    session = Mock()
+    session.request.return_value = make_response(json_data={"ticket_id": "not-a-uuid"})
+    client = EventsProviderClient(base_url="http://provider.example", session=session)
+
+    with pytest.raises(ProviderBadResponseError):
+        client.register(
+            "event-1",
+            first_name="Ivan",
+            last_name="Ivanov",
+            email="ivan@example.com",
+            seat="A10",
+        )

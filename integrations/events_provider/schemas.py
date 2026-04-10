@@ -1,4 +1,5 @@
 from typing import Any
+from uuid import UUID
 
 
 def validate_events_page(payload: dict[str, Any]) -> dict[str, Any]:
@@ -41,6 +42,13 @@ def validate_ticket_response(payload: dict[str, Any]) -> str:
     ticket_id = payload.get("ticket_id")
     if not isinstance(ticket_id, str) or not ticket_id:
         raise TypeError("Provider response field 'ticket_id' must be a non-empty string.")
+
+    try:
+        UUID(ticket_id)
+    except (TypeError, ValueError) as error:
+        raise TypeError(
+            "Provider response field 'ticket_id' must be a valid UUID string."
+        ) from error
 
     return ticket_id
 
