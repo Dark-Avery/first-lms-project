@@ -26,7 +26,9 @@ def create_place(*, place_id: str) -> Place:
     )
 
 
-def create_event(*, event_id: str, place: Place, status: str = "published") -> Event:
+def create_event(
+    *, event_id: str, place: Place, status: str = Event.Status.PUBLISHED
+) -> Event:
     event_time = timezone.now() + timedelta(days=10)
     return Event.objects.create(
         id=UUID(event_id),
@@ -87,7 +89,7 @@ def test_event_seats_returns_400_without_provider_call_for_unpublished_event():
     event = create_event(
         event_id="00000000-0000-0000-0000-000000000071",
         place=place,
-        status="new",
+        status=Event.Status.NEW,
     )
 
     with patch("events.services.EventsProviderClient") as provider_cls:

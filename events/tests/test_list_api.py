@@ -37,7 +37,7 @@ def create_event(
         name=name,
         event_time=event_time,
         registration_deadline=event_time - timedelta(days=1),
-        status="published",
+        status=Event.Status.PUBLISHED,
         number_of_visitors=number_of_visitors,
         created_at=event_time - timedelta(days=2),
         changed_at=event_time - timedelta(days=2),

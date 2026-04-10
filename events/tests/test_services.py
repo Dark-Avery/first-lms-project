@@ -17,7 +17,7 @@ from events.services import (
 )
 
 
-def create_event(*, status: str = "published") -> Event:
+def create_event(*, status: str = Event.Status.PUBLISHED) -> Event:
     now = timezone.now()
     place = Place.objects.create(
         id=uuid4(),

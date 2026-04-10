@@ -5,6 +5,7 @@ from uuid import UUID
 from django.utils import timezone
 
 from events.exceptions import EventNotFound, EventUnpublished, SeatPatternError
+from events.models import Event
 from events.seat_patterns import seat_exists
 from events.selectors import get_event_by_id
 from events.services import (
@@ -44,7 +45,7 @@ class CreateTicketUseCase:
         event = get_event_by_id(event_id=event_id)
         if event is None:
             raise EventNotFound
-        if event.status != "published":
+        if event.status != Event.Status.PUBLISHED:
             raise EventUnpublished
         now = timezone.now()
         if now >= event.registration_deadline or now >= event.event_time:

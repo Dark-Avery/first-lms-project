@@ -24,7 +24,7 @@ def build_event_payload(
     seats_pattern: str = "A1-100",
     event_time: str = "2026-01-11T17:00:00+03:00",
     registration_deadline: str = "2026-01-10T17:00:00+03:00",
-    status: str = "published",
+    status: str = Event.Status.PUBLISHED,
     number_of_visitors: int = 5,
     changed_at: str = "2026-01-04T22:28:35+03:00",
     created_at: str = "2026-01-04T22:00:00+03:00",
@@ -109,7 +109,7 @@ def test_sync_uses_existing_watermark_date_and_updates_records_without_duplicate
         name="Old Conference",
         event_time=parse_datetime("2026-01-11T17:00:00+03:00"),
         registration_deadline=parse_datetime("2026-01-10T17:00:00+03:00"),
-        status="new",
+        status=Event.Status.NEW,
         number_of_visitors=1,
         created_at=parse_datetime("2026-01-01T12:00:00+03:00"),
         changed_at=parse_datetime("2026-01-01T12:00:00+03:00"),
@@ -136,7 +136,7 @@ def test_sync_uses_existing_watermark_date_and_updates_records_without_duplicate
     assert updated_place.name == "Updated Hall"
     assert updated_place.city == "Saint Petersburg"
     assert updated_event.name == "Updated Conference"
-    assert updated_event.status == "published"
+    assert updated_event.status == Event.Status.PUBLISHED
     assert updated_event.number_of_visitors == 12
 
 

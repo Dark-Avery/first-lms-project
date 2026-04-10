@@ -33,7 +33,7 @@ def create_event(*, event_time=None) -> Event:
         name="Python Meetup",
         event_time=actual_event_time,
         registration_deadline=actual_event_time - timedelta(days=1),
-        status="published",
+        status=Event.Status.PUBLISHED,
         number_of_visitors=10,
         created_at=now - timedelta(days=1),
         changed_at=now,

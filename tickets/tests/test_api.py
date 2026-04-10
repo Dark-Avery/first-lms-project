@@ -35,7 +35,7 @@ def create_event(
     *,
     event_id: str,
     place: Place,
-    status: str = "published",
+    status: str = Event.Status.PUBLISHED,
     registration_deadline=None,
 ) -> Event:
     event_time = timezone.now() + timedelta(days=10)
@@ -135,7 +135,7 @@ def test_ticket_create_rejects_unpublished_event_without_provider_calls():
     event = create_event(
         event_id="00000000-0000-0000-0000-000000000112",
         place=place,
-        status="new",
+        status=Event.Status.NEW,
     )
 
     with patch("tickets.views.EventsProviderClient") as provider_cls:
@@ -225,7 +225,7 @@ def test_ticket_create_rejects_past_event_without_provider_calls():
         name="Past Conference",
         event_time=event_time,
         registration_deadline=timezone.now() + timedelta(minutes=5),
-        status="published",
+        status=Event.Status.PUBLISHED,
         number_of_visitors=5,
         created_at=event_time - timedelta(days=2),
         changed_at=event_time - timedelta(days=2),

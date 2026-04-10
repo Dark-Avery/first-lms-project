@@ -25,7 +25,7 @@ def create_event():
         name="Python Meetup",
         event_time=now + timedelta(days=3),
         registration_deadline=now + timedelta(days=2),
-        status="published",
+        status=Event.Status.PUBLISHED,
         number_of_visitors=10,
         created_at=now - timedelta(days=1),
         changed_at=now,

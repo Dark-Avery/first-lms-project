@@ -43,7 +43,7 @@ def get_available_seats(
     event = get_event_by_id(event_id=event_id)
     if event is None:
         raise EventNotFound
-    if event.status != "published":
+    if event.status != Event.Status.PUBLISHED:
         raise EventUnpublished
 
     return get_available_seats_for_event(event, client=client)

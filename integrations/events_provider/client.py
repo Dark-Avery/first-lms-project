@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urljoin
 
 import requests
 from django.conf import settings
@@ -30,7 +31,7 @@ class EventsProviderClient:
         timeout: int | None = None,
         session: requests.Session | None = None,
     ) -> None:
-        self.base_url = (base_url or settings.EVENTS_PROVIDER_BASE_URL).rstrip("/")
+        self.base_url = f"{(base_url or settings.EVENTS_PROVIDER_BASE_URL).rstrip('/')}/"
         self.api_key = api_key if api_key is not None else settings.EVENTS_PROVIDER_API_KEY
         self.timeout = timeout if timeout is not None else settings.PROVIDER_TIMEOUT_SECONDS
         self.session = session or requests.Session()
@@ -102,7 +103,7 @@ class EventsProviderClient:
             ) from error
 
     def _build_url(self, path: str) -> str:
-        return f"{self.base_url}/{path.lstrip('/')}"
+        return urljoin(self.base_url, path.lstrip("/"))
 
     def _request(self, method: str, url: str, **kwargs: Any) -> requests.Response:
         request_kwargs = {

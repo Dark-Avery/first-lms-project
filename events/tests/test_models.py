@@ -26,7 +26,7 @@ def test_event_can_be_created_with_place():
         name="Python Meetup",
         event_time=now + timedelta(days=3),
         registration_deadline=now + timedelta(days=2),
-        status="published",
+        status=Event.Status.PUBLISHED,
         number_of_visitors=10,
         created_at=now - timedelta(days=1),
         changed_at=now,
@@ -34,3 +34,4 @@ def test_event_can_be_created_with_place():
     )
 
     assert event.place == place
+    assert event.status == Event.Status.PUBLISHED

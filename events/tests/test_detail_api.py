@@ -30,7 +30,7 @@ def create_event(*, event_id: str, place: Place, event_time) -> Event:
         name="Python Conference",
         event_time=event_time,
         registration_deadline=event_time - timedelta(days=1),
-        status="published",
+        status=Event.Status.PUBLISHED,
         number_of_visitors=5,
         created_at=event_time - timedelta(days=2),
         changed_at=event_time - timedelta(days=2),

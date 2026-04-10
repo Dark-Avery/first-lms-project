@@ -46,6 +46,22 @@ def test_events_request_uses_trailing_slash_and_api_key_header():
     )
 
 
+def test_build_url_keeps_base_path_prefix():
+    session = Mock()
+    session.request.return_value = make_response(json_data={"seats": ["A1"]})
+    client = EventsProviderClient(base_url="http://provider.example/root", session=session)
+
+    client.seats("event-1")
+
+    session.request.assert_called_once_with(
+        "GET",
+        "http://provider.example/root/api/events/event-1/seats/",
+        headers={"x-api-key": ""},
+        timeout=10,
+        params=None,
+    )
+
+
 def test_events_request_uses_next_page_url_as_is():
     session = Mock()
     session.request.return_value = make_response(
