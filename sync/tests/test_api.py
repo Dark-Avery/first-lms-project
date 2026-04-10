@@ -3,31 +3,26 @@ from unittest.mock import Mock, patch
 import pytest
 from rest_framework.test import APIClient
 
-from integrations.events_provider.exceptions import ProviderTemporaryError
-
 
 @pytest.mark.django_db
-def test_sync_trigger_returns_success_and_calls_service():
+def test_sync_trigger_returns_queued_response_and_enqueues_task():
     client = APIClient()
-    service = Mock()
+    task = Mock(id="task-123")
 
-    with patch("sync.views.SyncEventsService", return_value=service) as service_cls:
+    with patch("sync.views.run_sync_events.delay", return_value=task) as delay_mock:
         response = client.post("/api/sync/trigger")
 
     assert response.status_code == 200
-    assert response.json() == {"success": True}
-    service_cls.assert_called_once()
-    service.run.assert_called_once_with()
+    assert response.json() == {"status": "queued", "task_id": "task-123"}
+    delay_mock.assert_called_once_with()
 
 
 @pytest.mark.django_db
-def test_sync_trigger_returns_json_error_when_service_fails():
+def test_sync_trigger_returns_json_error_when_queue_is_unavailable():
     client = APIClient()
-    service = Mock()
-    service.run.side_effect = ProviderTemporaryError("provider unavailable")
 
-    with patch("sync.views.SyncEventsService", return_value=service):
+    with patch("sync.views.run_sync_events.delay", side_effect=RuntimeError("queue down")):
         response = client.post("/api/sync/trigger")
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "Sync failed."}
+    assert response.json() == {"detail": "Sync queue is unavailable."}
