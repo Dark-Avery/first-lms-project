@@ -4,9 +4,15 @@ from pathlib import Path
 from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
+from config.database import (
+    build_default_celery_broker_url,
+    build_default_database_settings,
+)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_SYNC_START_DATE = "2000-01-01"
-DEFAULT_DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.sqlite3")
+DEFAULT_DATABASE = build_default_database_settings(base_dir=BASE_DIR)
+DEFAULT_DB_ENGINE = DEFAULT_DATABASE["ENGINE"]
 
 DEBUG = os.getenv("DEBUG", "False") == "True"
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -65,16 +71,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": DEFAULT_DB_ENGINE,
-        "NAME": os.getenv("DB_NAME", str(BASE_DIR / "db.sqlite3")),
-        "USER": os.getenv("DB_USER", ""),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", ""),
-        "PORT": os.getenv("DB_PORT", ""),
-    }
-}
+DATABASES = {"default": DEFAULT_DATABASE}
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -116,7 +113,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": None,
 }
 
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "")
+CELERY_BROKER_URL = build_default_celery_broker_url()
 CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "False") == "True"
 CELERY_TASK_EAGER_PROPAGATES = (
     os.getenv("CELERY_TASK_EAGER_PROPAGATES", "False") == "True"
