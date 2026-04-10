@@ -47,7 +47,17 @@ def make_stub_commands(tmp_path: Path) -> Path:
     return bin_dir
 
 
-def run_script(tmp_path: Path, *, broker_url: str | None) -> tuple[str, str]:
+def run_script(
+    tmp_path: Path,
+    *,
+    broker_url: str | None,
+    postgres_connection_string: str | None = None,
+    postgres_host: str | None = None,
+    postgres_database_name: str | None = None,
+    postgres_username: str | None = None,
+    postgres_password: str | None = None,
+    postgres_port: str | None = None,
+) -> tuple[str, str]:
     log_path = tmp_path / "run.log"
     env = os.environ.copy()
     env["PATH"] = f"{make_stub_commands(tmp_path)}:{env['PATH']}"
@@ -56,6 +66,18 @@ def run_script(tmp_path: Path, *, broker_url: str | None) -> tuple[str, str]:
         env.pop("CELERY_BROKER_URL", None)
     else:
         env["CELERY_BROKER_URL"] = broker_url
+    if postgres_connection_string is not None:
+        env["POSTGRES_CONNECTION_STRING"] = postgres_connection_string
+    if postgres_host is not None:
+        env["POSTGRES_HOST"] = postgres_host
+    if postgres_database_name is not None:
+        env["POSTGRES_DATABASE_NAME"] = postgres_database_name
+    if postgres_username is not None:
+        env["POSTGRES_USERNAME"] = postgres_username
+    if postgres_password is not None:
+        env["POSTGRES_PASSWORD"] = postgres_password
+    if postgres_port is not None:
+        env["POSTGRES_PORT"] = postgres_port
 
     process = subprocess.Popen(  # noqa: S603
         ["bash", str(RUN_SH)],
@@ -87,5 +109,31 @@ def test_run_sh_starts_worker_beat_and_gunicorn_when_broker_is_set(tmp_path: Pat
 
     assert "python manage.py migrate" in log_contents
     assert "gunicorn config.wsgi:application" in log_contents
+    assert "python -m celery -A config worker -l INFO" in log_contents
+    assert "python -m celery -A config beat -l INFO" in log_contents
+
+
+def test_run_sh_derives_broker_from_postgres_connection_string(tmp_path: Path):
+    _, log_contents = run_script(
+        tmp_path,
+        broker_url=None,
+        postgres_connection_string="postgres://user:pass@postgres.internal:5432/service_db",
+    )
+
+    assert "python -m celery -A config worker -l INFO" in log_contents
+    assert "python -m celery -A config beat -l INFO" in log_contents
+
+
+def test_run_sh_derives_broker_from_platform_postgres_envs(tmp_path: Path):
+    _, log_contents = run_script(
+        tmp_path,
+        broker_url=None,
+        postgres_host="postgres.internal",
+        postgres_database_name="service_db",
+        postgres_username="service_user",
+        postgres_password="service_password",
+        postgres_port="5432",
+    )
+
     assert "python -m celery -A config worker -l INFO" in log_contents
     assert "python -m celery -A config beat -l INFO" in log_contents

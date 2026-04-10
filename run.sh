@@ -5,6 +5,20 @@ if [ -d "${PWD}/.venv/bin" ]; then
   export PATH="${PWD}/.venv/bin:${PATH}"
 fi
 
+if [ -z "${CELERY_BROKER_URL:-}" ]; then
+  if [ -n "${POSTGRES_CONNECTION_STRING:-}" ]; then
+    CELERY_BROKER_URL="${POSTGRES_CONNECTION_STRING#postgres://}"
+    CELERY_BROKER_URL="${CELERY_BROKER_URL#postgresql://}"
+    export CELERY_BROKER_URL="sqla+postgresql+psycopg2://${CELERY_BROKER_URL}"
+  elif [ -n "${POSTGRES_HOST:-}" ] && [ -n "${POSTGRES_PASSWORD:-}" ]; then
+    POSTGRES_DATABASE="${POSTGRES_DATABASE_NAME:-${POSTGRES_DB:-}}"
+    POSTGRES_USERNAME_VALUE="${POSTGRES_USERNAME:-${POSTGRES_USER:-}}"
+    POSTGRES_PORT_VALUE="${POSTGRES_PORT:-5432}"
+
+    export CELERY_BROKER_URL="sqla+postgresql+psycopg2://${POSTGRES_USERNAME_VALUE}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT_VALUE}/${POSTGRES_DATABASE}"
+  fi
+fi
+
 PIDS=()
 
 python manage.py migrate
