@@ -14,3 +14,7 @@ def list_events(*, date_from: date | None) -> QuerySet[Event]:
         queryset = queryset.filter(event_time__date__gte=date_from)
 
     return queryset
+
+
+def get_event_by_id(*, event_id) -> Event | None:
+    return Event.objects.select_related("place").filter(id=event_id).first()
